@@ -2,6 +2,7 @@ package com.cf;
 
 import javax.sql.DataSource;
 
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.Cloud;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Profile;
 
 @Configuration
 @Profile("cloud")
+
 public class DataSourceConfiguration {
 
   @Bean

@@ -1,0 +1,7 @@
+---
+applications:
+  - name: dora-java
+    buildpack: java_buildpack_offline
+    path: target/dora-0.0.1-SNAPSHOT.jar
+    services:
+      - testdb

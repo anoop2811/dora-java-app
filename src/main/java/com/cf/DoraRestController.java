@@ -2,10 +2,12 @@ package com.cf;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.QueryParam;
 
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
@@ -92,15 +94,16 @@ public class DoraRestController {
 	}
 
 	@RequestMapping("/ping")
-	public String ping(@RequestParam(required = false, name = "address") String address, HttpServletResponse response)
-			throws ExecuteException, IOException {
+	public String ping(@RequestParam(required = false, name = "address") String address,
+			@RequestParam(required = false, name = "maxPing") String maxPing, HttpServletResponse response)
+					throws ExecuteException, IOException {
 		response.setContentType("text/html;charset=utf-8");
 		if (StringUtils.isEmpty(address)) {
 			return "PONG";
 		} else {
 			CommandLine cmd = new CommandLine("ping");
 			cmd.addArgument("-c");
-			cmd.addArgument("4");
+			cmd.addArgument(maxPing);
 			cmd.addArgument(address);
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 			DefaultExecutor executor = new DefaultExecutor();
@@ -161,7 +164,7 @@ public class DoraRestController {
 				userStr.append(String.valueOf(user));
 			});
 		} catch (Exception ex) {
-			return "User not found";
+			return "User not found, exception: " + ex.getMessage();
 		}
 		return userStr.toString();
 	}
@@ -201,14 +204,18 @@ public class DoraRestController {
 		return "User succesfully updated!";
 	}
 
-	@RequestMapping(path = "/tcpdump}", method = RequestMethod.GET)
-	@ResponseBody
-	public String tcpdump(@RequestParam("packets")int packets, @RequestParam("host")String host, HttpServletResponse response) throws ExecuteException, IOException {
+	@RequestMapping(path = "/tcpdump", method = RequestMethod.GET)
+	public void tcpdump(@RequestParam(value = "packets", required = false) Integer packets,
+			@RequestParam(value = "host") String host,
+			@RequestParam(value = "retries", defaultValue = "1") Integer retries, HttpServletResponse response)
+					throws ExecuteException, IOException, InterruptedException {
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-		if (packets <= 0) {
+		if (packets == null || packets <= 0) {
 			packets = 10;
 		}
-		CommandLine cmd = new CommandLine("tcpdump");
+		CommandLine cmd = new CommandLine("sudo");
+		cmd.addArgument("tcpdump");
+		cmd.addArgument("-vv");
 		cmd.addArgument("-c");
 		cmd.addArgument(String.valueOf(packets));
 		cmd.addArgument("host");
@@ -219,13 +226,17 @@ public class DoraRestController {
 		ExecuteWatchdog watchdog = new ExecuteWatchdog(60000);
 		executor.setStreamHandler(streamHandler);
 		executor.setWatchdog(watchdog);
-		try {
-			executor.execute(cmd);
-		} catch (Exception e) {
-			return ("<pre>"+ String.valueOf(e.getStackTrace()) + "</pre>");
-		}
-		
-		return("<pre>" + outputStream.toString() + "</pre>");
+		//for (int i = 0; i < retries; i++) {
+			try {
+				executor.execute(cmd);
+			} catch (Exception e) {
+				response.getOutputStream().write(("<pre>" + Arrays.toString(e.getStackTrace()) + "</pre>").getBytes());
+			}
+			String output = outputStream.toString().replace("ICMP", "<strong><font color=\"red\">ICMP</font></strong>");
+			output = output.replace("ESP", "<strong><font color=\"red\">ESP</font></strong>");
+			response.getOutputStream().write(("<pre>" + output + "</pre>").getBytes());
+		//	Thread.sleep(1000);
+		//}
 	}
 
 }
